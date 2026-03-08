@@ -1,21 +1,31 @@
 """
-Storage abstraction for the I-love-geekos marketplace.
+Storage layer for the I-love-geekos marketplace.
 
-DEMO SCENARIO:
-  - Phase 1 (current): FileStorage stores cart/session data on a PersistentVolume.
-    This will eventually fill up the disk (out-of-disk / OOM-like scenario).
-  - Phase 2 (the fix): Replace FileStorage with RedisStorage by setting
-    STORAGE_BACKEND=redis and providing REDIS_HOST/REDIS_PORT env vars.
+CURRENT STATE (Phase 1):
+  FileStorage writes one JSON file per visitor session to DATA_DIR, which is
+  mounted from a Kubernetes PersistentVolumeClaim.  Files are never cleaned up,
+  so the volume gradually fills until writes fail with "No space left on device".
 
-To switch backends set the environment variable:
-  STORAGE_BACKEND=file   (default)
-  STORAGE_BACKEND=redis
+THE FIX (Phase 2 – to be implemented during the demo):
+  Add a RedisStorage class that stores cart data in Redis using SETEX so keys
+  expire automatically.  Then update create_storage() to return RedisStorage
+  when STORAGE_BACKEND=redis is set.
+
+  Required interface (same methods as FileStorage):
+    get_cart(session_id)      → list
+    save_cart(session_id, cart)
+    clear_cart(session_id)
+    increment_visits()        → int
+    get_visits()              → int
+    storage_info()            → dict with key "backend" = "redis"
+
+  Useful env vars: REDIS_HOST (default: "redis"), REDIS_PORT (default: 6379),
+                   REDIS_DB (default: 0), CART_TTL_SECONDS (default: 3600)
 """
 
 import json
 import logging
 import os
-import time
 
 logger = logging.getLogger(__name__)
 
@@ -128,80 +138,17 @@ class FileStorage:
         }
 
 
-# ── Redis-based storage (Phase 2 – the fix) ──────────────────────────────────
-
-class RedisStorage:
-    """
-    Stores shopping-cart data in Redis.
-
-    No files are written to disk, so the PersistentVolume is no longer needed.
-    Environment variables:
-      REDIS_HOST  (default: redis)
-      REDIS_PORT  (default: 6379)
-      REDIS_DB    (default: 0)
-    Cart keys expire after CART_TTL_SECONDS (default: 3600).
-    """
-
-    CART_TTL = int(os.environ.get("CART_TTL_SECONDS", "3600"))
-
-    def __init__(self):
-        import redis as redis_lib  # imported lazily so the file backend doesn't need it
-
-        host = os.environ.get("REDIS_HOST", "redis")
-        port = int(os.environ.get("REDIS_PORT", "6379"))
-        db = int(os.environ.get("REDIS_DB", "0"))
-        self._r = redis_lib.Redis(host=host, port=port, db=db, decode_responses=True)
-        logger.info("RedisStorage initialized – %s:%s db=%s", host, port, db)
-
-    # ── cart ─────────────────────────────────────────────────────────────────
-
-    def get_cart(self, session_id: str) -> list:
-        raw = self._r.get(f"cart:{session_id}")
-        if raw is None:
-            return []
-        try:
-            return json.loads(raw)
-        except json.JSONDecodeError:
-            return []
-
-    def save_cart(self, session_id: str, cart: list) -> None:
-        self._r.setex(f"cart:{session_id}", self.CART_TTL, json.dumps(cart))
-
-    def clear_cart(self, session_id: str) -> None:
-        self._r.delete(f"cart:{session_id}")
-
-    # ── visit counter ─────────────────────────────────────────────────────────
-
-    def increment_visits(self) -> int:
-        return self._r.incr("visits")
-
-    def get_visits(self) -> int:
-        val = self._r.get("visits")
-        return int(val) if val else 0
-
-    # ── info ──────────────────────────────────────────────────────────────────
-
-    def storage_info(self) -> dict:
-        info = self._r.info("memory")
-        return {
-            "backend": "redis",
-            "used_memory": info.get("used_memory"),
-            "used_memory_human": info.get("used_memory_human"),
-            "maxmemory": info.get("maxmemory"),
-            "maxmemory_human": info.get("maxmemory_human"),
-        }
+# TODO: implement RedisStorage here (Phase 2 – the fix).
+# See the module docstring above for the required interface and env vars.
 
 
 # ── Factory ───────────────────────────────────────────────────────────────────
 
 def create_storage():
-    """
-    Return the correct storage backend based on the STORAGE_BACKEND env var.
+    """Return the storage backend for the application.
 
-    STORAGE_BACKEND=file   → FileStorage  (default, Phase 1)
-    STORAGE_BACKEND=redis  → RedisStorage (Phase 2 – the fix)
+    Currently only FileStorage is supported.  After implementing RedisStorage
+    above, update this function to return RedisStorage() when the environment
+    variable STORAGE_BACKEND=redis is set.
     """
-    backend = os.environ.get("STORAGE_BACKEND", "file").lower()
-    if backend == "redis":
-        return RedisStorage()
     return FileStorage()

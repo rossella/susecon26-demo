@@ -1,17 +1,14 @@
 """
 I-love-geekos Marketplace – Flask application.
 
-Demo flow
-─────────
-Phase 1: STORAGE_BACKEND=file  (default)
-  Cart data is written to JSON files on a PersistentVolume.
-  The /storage-status page shows how much disk space has been consumed.
-  Run the helper script to simulate many sessions filling the volume:
-    python simulate_load.py
+Currently uses FileStorage (Phase 1): cart data is written to JSON files on
+a PersistentVolume.  Run the helper script to watch the disk fill up:
+  python simulate_load.py
 
-Phase 2: STORAGE_BACKEND=redis  (the fix)
-  Set the env var and point REDIS_HOST at the Redis service.
-  Cart data is stored in Redis; no files are written to disk.
+The /storage-status page shows live disk usage.
+
+To fix the problem (Phase 2), implement RedisStorage in storage.py and update
+create_storage() to return it when STORAGE_BACKEND=redis is set.
 """
 
 import logging
