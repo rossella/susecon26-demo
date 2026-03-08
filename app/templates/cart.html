@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Your Cart – I-love-geekos{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('index') }}">← Continue shopping</a>
+</div>
+
+<h2>🛒 Your Cart</h2>
+
+{% if cart %}
+<div class="cart-container">
+  <table class="cart-table">
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Price</th>
+        <th>Qty</th>
+        <th>Subtotal</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in cart %}
+      <tr>
+        <td><span class="item-emoji">{{ item.emoji }}</span> {{ item.name }}</td>
+        <td>${{ "%.2f"|format(item.price) }}</td>
+        <td>{{ item.qty }}</td>
+        <td>${{ "%.2f"|format(item.price * item.qty) }}</td>
+        <td>
+          <form action="{{ url_for('remove_from_cart', product_id=item.id) }}" method="post">
+            <button type="submit" class="btn-remove">✕ Remove</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="3"><strong>Total</strong></td>
+        <td colspan="2"><strong class="total-price">${{ "%.2f"|format(total) }}</strong></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="cart-actions">
+    <form action="{{ url_for('checkout') }}" method="post">
+      <button type="submit" class="btn-checkout">💳 Checkout</button>
+    </form>
+  </div>
+</div>
+{% else %}
+<div class="empty-cart">
+  <p>Your cart is empty. <a href="{{ url_for('index') }}">Start shopping!</a></p>
+</div>
+{% endif %}
+{% endblock %}

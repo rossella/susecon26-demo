@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Order Confirmed – I-love-geekos{% endblock %}
+
+{% block content %}
+<div class="checkout-success">
+  <div class="success-icon">🎉</div>
+  <h2>Thank you for your order!</h2>
+  <p class="success-message">
+    Your Geeko goodies are on their way. Watch your inbox for updates.
+  </p>
+
+  {% if cart %}
+  <div class="order-summary">
+    <h3>Order Summary</h3>
+    <ul class="order-items">
+      {% for item in cart %}
+      <li>
+        <span class="item-emoji">{{ item.emoji }}</span>
+        {{ item.name }} &times; {{ item.qty }}
+        — <strong>${{ "%.2f"|format(item.price * item.qty) }}</strong>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="order-total">Total paid: <strong>${{ "%.2f"|format(total) }}</strong></p>
+  </div>
+  {% endif %}
+
+  <a href="{{ url_for('index') }}" class="btn-add">🛍️ Continue Shopping</a>
+</div>
+{% endblock %}

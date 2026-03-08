@@ -1,0 +1,23 @@
+# ── PersistentVolumeClaim ─────────────────────────────────────────────────────
+# Phase 1: The app stores cart data here (JSON files).
+# Each session creates a new file that is never cleaned up, so the volume
+# will eventually be exhausted and writes will fail.
+#
+# In Phase 2 (the fix) this PVC is no longer used because cart data is
+# stored in Redis instead.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: geeko-data-pvc
+  namespace: ilovegeekos
+  labels:
+    app.kubernetes.io/name: ilovegeekos
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      # Intentionally small to make the out-of-disk demo easy to trigger.
+      storage: 50Mi
+  storageClassName: standard   # adjust for your cluster (e.g. local-path on k3s)
