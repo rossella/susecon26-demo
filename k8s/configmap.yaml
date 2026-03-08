@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ilovegeekos-config
+  namespace: ilovegeekos
+  labels:
+    app.kubernetes.io/name: ilovegeekos
+data:
+  # ── Storage backend ──────────────────────────────────────────────────────
+  # Phase 1 (demo start): STORAGE_BACKEND=file
+  #   Cart data is written to JSON files on the PersistentVolume.
+  #
+  # Phase 2 (the fix): change to STORAGE_BACKEND=redis
+  #   kubectl patch configmap ilovegeekos-config -n ilovegeekos \
+  #     --type merge -p '{"data":{"STORAGE_BACKEND":"redis"}}'
+  #   kubectl rollout restart deployment/ilovegeekos -n ilovegeekos
+  #
+  # Or set it directly on the deployment for a live demo:
+  #   kubectl set env deployment/ilovegeekos STORAGE_BACKEND=redis -n ilovegeekos
+  STORAGE_BACKEND: "file"
+  DATA_DIR: "/data"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"

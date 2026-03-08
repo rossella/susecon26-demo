@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}I-love-geekos 🦎{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <!-- ── Navigation ─────────────────────────────────────────────────────── -->
+  <nav class="navbar">
+    <div class="nav-brand">
+      <a href="{{ url_for('index') }}">
+        <span class="brand-emoji">🦎</span>
+        <span class="brand-text">I-love-geekos</span>
+      </a>
+    </div>
+    <div class="nav-links">
+      <a href="{{ url_for('index') }}">Shop</a>
+      <a href="{{ url_for('cart') }}" class="cart-link">
+        🛒 Cart
+      </a>
+      <a href="{{ url_for('storage_status') }}" class="storage-link" title="Storage status">
+        💾 Storage
+      </a>
+    </div>
+    <!-- Storage backend badge -->
+    <div class="backend-badge {% if backend == 'redis' %}badge-redis{% else %}badge-file{% endif %}">
+      {% if backend == 'redis' %}
+        🔴 Redis
+      {% else %}
+        📁 File (PV)
+      {% endif %}
+    </div>
+  </nav>
+
+  <!-- ── Main content ────────────────────────────────────────────────────── -->
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ── Footer ─────────────────────────────────────────────────────────── -->
+  <footer class="footer">
+    <p>
+      Made with 💚 for
+      <strong><a href="https://www.suse.com/susecon/" target="_blank">SUSECon 2026</a></strong>
+      &nbsp;|&nbsp;
+      Storage backend:
+      <strong class="{% if backend == 'redis' %}text-redis{% else %}text-file{% endif %}">
+        {{ backend.upper() }}
+      </strong>
+    </p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,46 @@
+version: "3.9"
+
+# ── Phase 1: file-based storage (default, simulates PersistentVolume) ─────────
+#   docker compose up
+#
+# ── Phase 2: Redis backend (the fix) ─────────────────────────────────────────
+#   docker compose --profile redis up
+
+services:
+  app:
+    build: .
+    image: ilovegeekos:latest
+    ports:
+      - "5000:5000"
+    environment:
+      SECRET_KEY: "demo-secret-key"
+      # ── Phase 1 (default): file storage ──
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-file}
+      DATA_DIR: /data
+      # ── Phase 2 (the fix): uncomment or set STORAGE_BACKEND=redis ──
+      # STORAGE_BACKEND: redis
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    volumes:
+      - geeko-data:/data   # simulates a Kubernetes PersistentVolume
+    depends_on:
+      redis:
+        condition: service_healthy
+        required: false
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["redis"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  geeko-data:
+    driver: local

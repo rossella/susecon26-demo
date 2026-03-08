@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Storage Status – I-love-geekos{% endblock %}
+
+{% block content %}
+<h2>💾 Storage Status</h2>
+
+<div class="storage-panel">
+
+  {% if info.backend == 'file' %}
+  <!-- ── File / PersistentVolume info ─────────────────────────────────── -->
+  <div class="storage-backend-info storage-file">
+    <h3>📁 Backend: File (PersistentVolume)</h3>
+    <p class="storage-warning">
+      ⚠️  Cart data is stored as JSON files on the PersistentVolume.
+      Each visitor session creates a new file that is <strong>never cleaned up</strong>.
+      Eventually the volume will be exhausted and writes will fail.
+    </p>
+
+    <dl class="storage-details">
+      <dt>Data directory</dt><dd><code>{{ info.data_dir }}</code></dd>
+      <dt>Files on disk</dt><dd>{{ info.file_count }}</dd>
+      <dt>Space used by app</dt>
+      <dd>{{ (info.used_bytes / 1024) | round(1) }} KB ({{ info.used_bytes }} bytes)</dd>
+      <dt>Free disk space</dt>
+      <dd>
+        {% if info.free_bytes < 10 * 1024 * 1024 %}
+        <span class="text-danger">⛔ {{ (info.free_bytes / 1024 / 1024) | round(2) }} MB – CRITICAL!</span>
+        {% elif info.free_bytes < 100 * 1024 * 1024 %}
+        <span class="text-warning">⚠️ {{ (info.free_bytes / 1024 / 1024) | round(1) }} MB – Low</span>
+        {% else %}
+        {{ (info.free_bytes / 1024 / 1024) | round(1) }} MB
+        {% endif %}
+      </dd>
+      <dt>Total disk size</dt>
+      <dd>{{ (info.total_disk_bytes / 1024 / 1024) | round(1) }} MB</dd>
+    </dl>
+
+    {% if info.files %}
+    <details class="file-list">
+      <summary>Show files ({{ info.file_count }})</summary>
+      <ul>
+        {% for f in info.files %}
+        <li><code>{{ f.name }}</code> – {{ f.size_bytes }} bytes</li>
+        {% endfor %}
+      </ul>
+    </details>
+    {% endif %}
+
+    <div class="storage-cta">
+      <p>💡 <strong>Demo tip:</strong> Run the load simulator to fill the volume:</p>
+      <pre><code>kubectl exec -it deploy/ilovegeekos -- python simulate_load.py</code></pre>
+      <p>Then change the storage backend to Redis to fix the issue:</p>
+      <pre><code>kubectl set env deploy/ilovegeekos STORAGE_BACKEND=redis</code></pre>
+    </div>
+  </div>
+
+  {% elif info.backend == 'redis' %}
+  <!-- ── Redis info ──────────────────────────────────────────────────── -->
+  <div class="storage-backend-info storage-redis">
+    <h3>🔴 Backend: Redis</h3>
+    <p class="storage-ok">
+      ✅  Cart data is stored in Redis. No files are written to the PersistentVolume.
+      Memory usage is bounded and keys expire automatically.
+    </p>
+
+    <dl class="storage-details">
+      <dt>Used memory</dt><dd>{{ info.used_memory_human }}</dd>
+      <dt>Max memory</dt>
+      <dd>{% if info.maxmemory == 0 %}unlimited{% else %}{{ info.maxmemory_human }}{% endif %}</dd>
+    </dl>
+  </div>
+  {% endif %}
+
+</div>
+
+<div class="back-link">
+  <a href="{{ url_for('index') }}">← Back to shop</a>
+</div>
+{% endblock %}

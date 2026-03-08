@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}I-love-geekos 🦎 – Geeko Marketplace{% endblock %}
+
+{% block content %}
+<!-- ── Hero ──────────────────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-content">
+    <h1>🦎 I-love-geekos</h1>
+    <p class="hero-subtitle">
+      The one-stop shop for open-source fans and SUSE enthusiasts
+    </p>
+    <div class="hero-stats">
+      <span>👀 <strong>{{ visits }}</strong> visits today</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── Category filter ───────────────────────────────────────────────────── -->
+<section class="filters">
+  <button class="filter-btn active" data-category="all">All</button>
+  <button class="filter-btn" data-category="Collectibles">Collectibles</button>
+  <button class="filter-btn" data-category="Apparel">Apparel</button>
+  <button class="filter-btn" data-category="Books">Books</button>
+  <button class="filter-btn" data-category="Stationery">Stationery</button>
+  <button class="filter-btn" data-category="Kitchen">Kitchen</button>
+</section>
+
+<!-- ── Product grid ──────────────────────────────────────────────────────── -->
+<section class="product-grid">
+  {% for product in products %}
+  <div class="product-card" data-category="{{ product.category }}">
+    <div class="product-emoji">{{ product.emoji }}</div>
+    <div class="product-info">
+      <span class="product-category">{{ product.category }}</span>
+      <h3 class="product-name">
+        <a href="{{ url_for('product', product_id=product.id) }}">{{ product.name }}</a>
+      </h3>
+      <p class="product-description">{{ product.description }}</p>
+      <div class="product-footer">
+        <span class="product-price">${{ "%.2f"|format(product.price) }}</span>
+        <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="post">
+          <button type="submit" class="btn-add">Add to Cart 🛒</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+
+<script>
+  // Simple client-side category filter
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const cat = btn.dataset.category;
+      document.querySelectorAll('.product-card').forEach(card => {
+        card.style.display = (cat === 'all' || card.dataset.category === cat) ? '' : 'none';
+      });
+    });
+  });
+</script>
+{% endblock %}
