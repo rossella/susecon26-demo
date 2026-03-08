@@ -1,17 +1,17 @@
 # I-love-geekos 🦎 – Container Marketplace Demo
 
 A demo marketplace application for **SUSECon 2026** that shows how storing
-state on a **PersistentVolume** can exhaust disk space, and how switching to
-**Redis** as a key-value store solves the problem.
+state on a **PersistentVolume** can exhaust disk space, and how an AI agent
+can fix the problem by migrating to **Redis** as a key-value store.
 
 ---
 
 ## Demo story
 
-| Phase | Storage backend | What happens |
-|-------|-----------------|--------------|
-| **1 – The problem** | `STORAGE_BACKEND=file` (default) | Shopping-cart data is written as JSON files to a Kubernetes **PersistentVolumeClaim**. Every visitor session creates a new file that is never cleaned up. Running the load simulator fills the volume and triggers an out-of-disk error. |
-| **2 – The fix** | `STORAGE_BACKEND=redis` | One environment variable change switches the storage layer to **Redis**. Cart data is stored in-memory with automatic TTL expiry. No files, no disk pressure. |
+| Phase | How | What happens |
+|-------|-----|--------------|
+| **1 – The problem** | Deploy as-is | Shopping-cart data is written as JSON files to a Kubernetes **PersistentVolumeClaim**. Every visitor session creates a new file that is never cleaned up. Running the load simulator fills the volume and triggers an out-of-disk error. |
+| **2 – The fix** | AI agent writes code | Ask the AI agent to implement `RedisStorage` in `storage.py` and wire it into `create_storage()`. Redis is pre-deployed. After the code change is deployed with `STORAGE_BACKEND=redis`, no files are written and disk pressure disappears. |
 
 ---
 
@@ -21,7 +21,7 @@ state on a **PersistentVolume** can exhaust disk space, and how switching to
 .
 ├── app/
 │   ├── app.py              # Flask application (routes, products catalogue)
-│   ├── storage.py          # Storage abstraction (FileStorage / RedisStorage)
+│   ├── storage.py          # FileStorage (Phase 1) + TODO for RedisStorage (Phase 2)
 │   ├── simulate_load.py    # Script to fill the PV and trigger the error
 │   ├── requirements.txt
 │   ├── static/css/style.css
@@ -39,7 +39,7 @@ state on a **PersistentVolume** can exhaust disk space, and how switching to
 │   ├── configmap.yaml      # STORAGE_BACKEND, REDIS_HOST, …
 │   ├── deployment.yaml     # App deployment
 │   ├── service.yaml        # ClusterIP service
-│   └── redis.yaml          # Redis deployment + service (Phase 2)
+│   └── redis.yaml          # Redis deployment + service (pre-deployed for Phase 2)
 ├── docker-compose.yml
 ├── Dockerfile
 └── README.md
@@ -65,27 +65,30 @@ docker compose exec app python simulate_load.py --sessions 300 --size-kb 10
 
 Watch the disk fill up at <http://localhost:5000/storage-status>.
 
-### Phase 2 – switch to Redis (the fix)
+### Phase 2 – after the AI agent writes the Redis code
+
+Once `RedisStorage` has been implemented and the image rebuilt:
 
 ```bash
 STORAGE_BACKEND=redis docker compose --profile redis up --build
 ```
 
-The app reconnects to Redis.  Open `/storage-status` – no disk pressure.
+Open `/storage-status` – backend is now **Redis**, no disk pressure.
 
 ---
 
 ## Kubernetes demo (k3s / Rancher Desktop / any cluster)
 
-### Phase 1 – deploy with file storage
+### Setup – deploy everything up front
 
 ```bash
-# Create namespace and apply all Phase 1 manifests
+# Namespace, PVC, app, and Redis (pre-deployed, idle until Phase 2)
 kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/pvc.yaml
 kubectl apply -f k8s/configmap.yaml
 kubectl apply -f k8s/deployment.yaml
 kubectl apply -f k8s/service.yaml
+kubectl apply -f k8s/redis.yaml   # deploy Redis now; app ignores it in Phase 1
 
 # Port-forward to access the app
 kubectl port-forward svc/ilovegeekos 8080:80 -n ilovegeekos
@@ -93,7 +96,7 @@ kubectl port-forward svc/ilovegeekos 8080:80 -n ilovegeekos
 
 Open <http://localhost:8080>.
 
-### Trigger the out-of-disk error
+### Trigger the out-of-disk error (Phase 1)
 
 ```bash
 kubectl exec -it deploy/ilovegeekos -n ilovegeekos -- \
@@ -108,36 +111,44 @@ exhausted you will see:
 The volume is full – this is the error we wanted to demonstrate!
 ```
 
-### Phase 2 – apply the fix (Redis)
+### Phase 2 – ask the AI agent to fix it
+
+Give the agent this prompt (or similar):
+
+```
+The PersistentVolume is running out of disk space because every shopping cart
+session writes a file that is never cleaned up.
+Migrate the cart storage from the file system to Redis so we no longer need
+the PersistentVolume.  The Redis service is already deployed and reachable at
+host "redis" port 6379.  Use STORAGE_BACKEND=redis to activate the new backend.
+```
+
+The agent will implement `RedisStorage` in `storage.py` and update
+`create_storage()`.  After it commits the change:
 
 ```bash
-# 1. Deploy Redis
-kubectl apply -f k8s/redis.yaml
+# Rebuild and redeploy
+docker build -t ilovegeekos:latest .
+kubectl rollout restart deployment/ilovegeekos -n ilovegeekos
 
-# 2. Switch the storage backend (live, no rebuild required)
+# Activate the Redis backend
 kubectl set env deployment/ilovegeekos STORAGE_BACKEND=redis -n ilovegeekos
 
-# 3. Watch the rollout
+# Watch the rollout
 kubectl rollout status deployment/ilovegeekos -n ilovegeekos
 ```
 
-Open `/storage-status` again – backend is now **Redis**, disk is free.
+Open `/storage-status` – backend is now **Redis**, disk is free.
 
 ---
 
-## Storage abstraction (`app/storage.py`)
+## Storage layer (`app/storage.py`)
 
-The key abstraction is the `create_storage()` factory:
+`FileStorage` is the only backend shipped in the repo.  It writes one JSON
+file per session to `DATA_DIR` (`/data`).  The `create_storage()` factory
+always returns `FileStorage` until the AI agent completes Phase 2.
 
-```python
-def create_storage():
-    backend = os.environ.get("STORAGE_BACKEND", "file").lower()
-    if backend == "redis":
-        return RedisStorage()
-    return FileStorage()
-```
-
-Both backends implement the same interface:
+The storage interface the agent must implement for `RedisStorage`:
 
 | Method | Description |
 |--------|-------------|
@@ -146,11 +157,11 @@ Both backends implement the same interface:
 | `clear_cart(session_id)` | Remove the cart after checkout |
 | `increment_visits()` | Increment and return the global visit counter |
 | `get_visits()` | Return the current visit count |
-| `storage_info()` | Return a dict with backend-specific usage info |
+| `storage_info()` | Return a dict with `"backend": "redis"` and memory info |
 
-`FileStorage` writes one JSON file per session to `DATA_DIR` (`/data`).  
-`RedisStorage` stores carts under the key `cart:<session_id>` with a TTL of
-3600 seconds (configurable via `CART_TTL_SECONDS`).
+After the agent's change, `create_storage()` should return `RedisStorage()`
+when `STORAGE_BACKEND=redis`.  Cart keys should expire after
+`CART_TTL_SECONDS` (default 3600) seconds using Redis `SETEX`.
 
 ---
 

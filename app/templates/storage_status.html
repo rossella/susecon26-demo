@@ -48,9 +48,13 @@
 
     <div class="storage-cta">
       <p>💡 <strong>Demo tip:</strong> Run the load simulator to fill the volume:</p>
-      <pre><code>kubectl exec -it deploy/ilovegeekos -- python simulate_load.py</code></pre>
-      <p>Then change the storage backend to Redis to fix the issue:</p>
-      <pre><code>kubectl set env deploy/ilovegeekos STORAGE_BACKEND=redis</code></pre>
+      <pre><code>kubectl exec -it deploy/ilovegeekos -n ilovegeekos -- python simulate_load.py</code></pre>
+      <p>Then ask the AI agent to fix the issue:</p>
+      <pre><code>The PersistentVolume is running out of disk space because every shopping cart
+session writes a file that is never cleaned up.
+Migrate the cart storage from the file system to Redis so we no longer need
+the PersistentVolume.  The Redis service is already deployed and reachable at
+host "redis" port 6379.  Use STORAGE_BACKEND=redis to activate the new backend.</code></pre>
     </div>
   </div>
 
