@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: ilovegeekos
   namespace: ilovegeekos
@@ -54,13 +54,8 @@ spec:
               port: 5000
             initialDelaySeconds: 5
             periodSeconds: 10
-  volumeClaimTemplates:
-    - metadata:
-        name: data
-      spec:
-        accessModes:
-          - ReadWriteOnce
-        storageClassName: local-storage
-        resources:
-          requests:
-            storage: 50Mi
+      volumes:
+        - name: data
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi
