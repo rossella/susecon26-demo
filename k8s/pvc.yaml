@@ -21,4 +21,3 @@ spec:
     requests:
       # Intentionally small to make the out-of-disk demo easy to trigger.
       storage: 50Mi
-  storageClassName: standard   # adjust for your cluster (e.g. local-path on k3s)
