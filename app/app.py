@@ -13,6 +13,7 @@ create_storage() to return it when STORAGE_BACKEND=redis is set.
 
 import logging
 import os
+import time
 import uuid
 
 from flask import (
@@ -32,6 +33,9 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "geeko-secret-change-in-prod")
+
+# Holds allocated chunks for the OOM demo endpoint.
+OOM_HOG = []
 
 # One storage instance for the whole application lifetime
 storage = create_storage()
@@ -238,6 +242,23 @@ def storage_status():
     info = storage.storage_info()
     backend = os.environ.get("STORAGE_BACKEND", "file")
     return render_template("storage_status.html", info=info, backend=backend)
+
+
+@app.route("/demo/oom", methods=["POST"])
+def demo_oom():
+    """Intentionally allocate memory until the container is OOM-killed (demo only)."""
+    if os.environ.get("ENABLE_OOM_DEMO", "false").lower() != "true":
+        abort(404)
+
+    chunk_mb = int(request.args.get("chunk_mb", "16"))
+    pause_ms = int(request.args.get("pause_ms", "20"))
+    logger.warning("OOM demo triggered: chunk_mb=%s pause_ms=%s", chunk_mb, pause_ms)
+
+    # Keep allocating and holding references so memory usage only grows.
+    while True:
+        OOM_HOG.append(bytearray(chunk_mb * 1024 * 1024))
+        if pause_ms > 0:
+            time.sleep(pause_ms / 1000)
 
 
 @app.errorhandler(404)
