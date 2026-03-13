@@ -32,13 +32,10 @@ spec:
                   name: ilovegeekos-secret
                   key: secret-key
                   optional: true
-          volumeMounts:
-            - name: data
-              mountPath: /data
           resources:
             requests:
               cpu: 100m
-              memory: 128Mi
+              memory: 64Mi
             limits:
               cpu: 500m
               memory: 256Mi
@@ -54,8 +51,4 @@ spec:
               port: 5000
             initialDelaySeconds: 5
             periodSeconds: 10
-      volumes:
-        - name: data
-          emptyDir:
-            medium: Memory
-            sizeLimit: 64Mi
+
