@@ -252,13 +252,40 @@ def demo_oom():
 
     chunk_mb = int(request.args.get("chunk_mb", "16"))
     pause_ms = int(request.args.get("pause_ms", "20"))
-    logger.warning("OOM demo triggered: chunk_mb=%s pause_ms=%s", chunk_mb, pause_ms)
+    target_mb = int(request.args.get("target_mb", os.environ.get("OOM_TARGET_MB", "512")))
+    logger.warning(
+        "OOM demo triggered: chunk_mb=%s pause_ms=%s target_mb=%s",
+        chunk_mb,
+        pause_ms,
+        target_mb,
+    )
 
     # Keep allocating and holding references so memory usage only grows.
-    while True:
-        OOM_HOG.append(bytearray(chunk_mb * 1024 * 1024))
-        if pause_ms > 0:
-            time.sleep(pause_ms / 1000)
+    allocated_mb = 0
+    try:
+        while True:
+            chunk = bytearray(chunk_mb * 1024 * 1024)
+
+            # Touch each memory page so RSS really grows (not just virtual size).
+            for i in range(0, len(chunk), 4096):
+                chunk[i] = 1
+
+            OOM_HOG.append(chunk)
+            allocated_mb += chunk_mb
+
+            # Ensure the endpoint fails even if the runtime/container has generous limits.
+            if target_mb > 0 and allocated_mb >= target_mb:
+                logger.error(
+                    "OOM demo reached target (%s MB). Forcing process exit (137).",
+                    allocated_mb,
+                )
+                os._exit(137)
+
+            if pause_ms > 0:
+                time.sleep(pause_ms / 1000)
+    except MemoryError:
+        logger.exception("OOM demo hit MemoryError after %s MB", allocated_mb)
+        os._exit(137)
 
 
 @app.errorhandler(404)
