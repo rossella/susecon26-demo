@@ -247,12 +247,9 @@ def storage_status():
 @app.route("/demo/oom", methods=["POST"])
 def demo_oom():
     """Intentionally allocate memory until the container is OOM-killed (demo only)."""
-    if os.environ.get("ENABLE_OOM_DEMO", "false").lower() != "true":
-        abort(404)
-
     chunk_mb = int(request.args.get("chunk_mb", "16"))
     pause_ms = int(request.args.get("pause_ms", "20"))
-    target_mb = int(request.args.get("target_mb", os.environ.get("OOM_TARGET_MB", "512")))
+    target_mb = int(request.args.get("target_mb", "512"))
     logger.warning(
         "OOM demo triggered: chunk_mb=%s pause_ms=%s target_mb=%s",
         chunk_mb,
