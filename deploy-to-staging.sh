@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Deploying ilovegeekos to Rancher Desktop..."
+echo "🚀 Deploying ilovegeekos to staging..."
 
 # Change to workspace directory
 cd "$(dirname "$0")"
@@ -13,7 +13,7 @@ docker build -t ilovegeekos:latest .
 
 # Step 2: Set kubectl context
 echo ""
-echo "🔗 Setting kubectl context to rancher-desktop..."
+echo "🔗 Setting kubectl context..."
 kubectl config use-context rancher-desktop
 
 # Step 3: Deploy Kubernetes manifests
@@ -57,11 +57,5 @@ echo ""
 echo "✅ Deployment complete! Status:"
 kubectl get all -n ilovegeekos
 
-kubectl port-forward -n ilovegeekos svc/ilovegeekos 5000:80
-
 echo ""
-echo "📊 To check Redis memory usage"
-echo "   visit: http://localhost:5000/storage-status"
-
-echo ""
-echo "🎉 All set! Your app is running on Rancher Desktop with Redis backend."
+echo "🎉 All set!"
