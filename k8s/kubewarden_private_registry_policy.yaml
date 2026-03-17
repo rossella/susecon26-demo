@@ -1,0 +1,43 @@
+apiVersion: policies.kubewarden.io/v1
+kind: ClusterAdmissionPolicy
+metadata:
+  name: private-registry-only-policy
+spec:
+  policyServer: default
+  module: registry://ghcr.io/kubewarden/policies/trusted-repos-policy:latest
+  failurePolicy: Fail
+  rules:
+    - apiGroups: [""]
+      apiVersions: ["v1"]
+      resources: ["pods", "replicationcontrollers"]
+      operations:
+        - CREATE
+        - UPDATE
+    - apiGroups: ["apps"]
+      apiVersions: ["v1"]
+      resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
+      operations:
+        - CREATE
+        - UPDATE
+    - apiGroups: ["batch"]
+      apiVersions: ["v1"]
+      resources: ["jobs", "cronjobs"]
+      operations:
+        - CREATE
+        - UPDATE
+  mutating: false
+  namespaceSelector:
+    matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values:
+          - kube-system
+          - kubewarden
+  settings:
+    # Keep only private registries here. Any image from a public registry
+    # (docker.io, quay.io, ghcr.io, etc.) will be rejected.
+    registries:
+      allow:
+        - registry.internal.example.com
+        - harbor.internal.example.com
+        - localhost:5000
