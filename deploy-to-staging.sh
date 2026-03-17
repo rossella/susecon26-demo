@@ -14,7 +14,7 @@ docker build -t ilovegeekos:latest .
 # Step 2: Set kubectl context
 echo ""
 echo "🔗 Setting kubectl context..."
-kubectl config use-context rancher-desktop
+kubectl config use-context k3d-love-geekos
 
 # Step 3: Deploy Kubernetes manifests
 echo ""
