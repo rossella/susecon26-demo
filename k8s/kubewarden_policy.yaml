@@ -3,28 +3,21 @@ kind: ClusterAdmissionPolicy
 metadata:
   name: container-resources-policy
 spec:
-  policyServer: container-resources-policy
+  policyServer: default
   module: registry://ghcr.io/kubewarden/policies/container-resources:latest
   rules:
-    - apiGroups: [""]
+    - apiGroups: ["apps"]
       apiVersions: ["v1"]
-      resources: ["pods"]
+      resources: ["deployments"]
       operations:
         - CREATE
         - UPDATE
   mutating: true
   settings:
     memory:
-      defaultRequest: "1G"
-      defaultLimit: "1G"
-      maxLimit: "2G"
-      maxRequest: "1G"
-      minRequest: "5M"
-      minLimit: "5M"
-    cpu:
-      defaultRequest: 1
-      defaultLimit: 1
-      maxLimit: 2
-      maxRequest: 1.5
-      minRequest: 0.5
-      minLimit: 0.5
+      defaultRequest: "100M"
+      defaultLimit: "2G"
+      maxRequest: "2G"
+      minRequest: "50M"
+      maxLimit: "4G"
+      minLimit: "2G"
