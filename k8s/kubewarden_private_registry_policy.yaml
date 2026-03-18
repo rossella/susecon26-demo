@@ -38,6 +38,5 @@ spec:
     # (docker.io, quay.io, ghcr.io, etc.) will be rejected.
     registries:
       allow:
-        - registry.internal.example.com
-        - harbor.internal.example.com
+        - ghcr.io
         - localhost:5000
